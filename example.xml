@@ -1,0 +1,39 @@
+﻿<package name="cross.essentialsExtensions" version="1.0.0">
+  <group>
+    <dependency name="cross" version="1.0.0"/>
+    <keyProvider namespace="Cross.UI" className="Attribute" type="attributes"/>
+    <eventType name="ResourceEvent" namespace="Cross.Events" className="WindowEvent" type="events"/>
+    <uriProvider name="file" namespace="Cross.Resources" className="FileSystemResourceProvider"/>
+    <nativeComponent name="something" className="Something" namespace="Cross.UI.Layout"/>
+  </group>
+  
+  <component name="vertical" layout="stack">
+    <attributes orientation="vertical"/>
+  </component>
+  <component name="horizontal" layout="stack">
+    <attributes orientation="horizontal"/>
+  </component>
+  <component name="center">
+    <layout name="stack"/>
+    <attributes orientation="vertical" innerAlign="center">
+      <children crossAlign="center"/>
+    </attributes>
+  </component>
+
+  <component name="userAccountSelector">
+    <derive name="verticalStack"/>
+    <parameter name="userList" type="user"/>
+    <event name="onSelectAccount" type="selectAccountEvent"/>
+    <body>
+      <select each="user" in="userList">
+        <horizontal size="100%,40px">
+          <bind event="click" dispatch="onSelectAccount" userAccount="{user}"/>
+          <image size="100%p,100%" src="file://{user:pfpPath}"/>
+          <center size="100%r,100%">
+            <label text="{user:name}"/>
+          </center>
+        </horizontal>
+      </select>
+    </body>
+  </component>
+</package>
