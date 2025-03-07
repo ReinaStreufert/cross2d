@@ -28,7 +28,8 @@ namespace Cross.UI.Layout
             NodeInitializer = nodeInitializer;
         }
 
-        private long LastValidated;        private LayoutValidator Root;
+        private long LastValidated;
+        private LayoutNode Root;
         private Size2DF RootSize;
         private long SizeLastInvalidated = 0;
         private IValidated _Destination;
@@ -66,7 +67,7 @@ namespace Cross.UI.Layout
             return new CompositionFrame<TRenderTarget>(windowRect, validAsOf, compositeRects, dirtyRects);
         }
 
-        private IEnumerable<LayoutValidator> Traverse(LayoutValidator validation)
+        private IEnumerable<LayoutNode> Traverse(LayoutNode validation)
         {
             yield return validation;
             if (validation.LastChildren == null)

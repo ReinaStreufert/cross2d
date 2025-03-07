@@ -120,6 +120,20 @@ namespace Cross.UI.Graphics
             a.CreateFrom(new UniformTransform(a, (i, x) => x / b));
     }
 
+    public class Vec1DF : VectorF<Vec1DF>
+    {
+        public float Value => _VecArray[0];
+
+        public Vec1DF() : base(1)
+        {
+        }
+
+        public Vec1DF(float value) : base(1)
+        {
+            _VecArray[0] = value;
+        }
+    }
+
     public class Point2DF : VectorF<Point2DF>
     {
         public float X => _VecArray[0];
@@ -150,6 +164,13 @@ namespace Cross.UI.Graphics
             _VecArray[0] = width;
             _VecArray[1] = height;
         }
+
+        public Size2DF SubtractPadding(Padding2DF padding) => new Size2DF(
+            Width - padding.Left - padding.Right,
+            Height - padding.Top - padding.Bottom);
+        public Size2DF AddMargin(Padding2DF margin) => new Size2DF(
+            Width + margin.Left + margin.Right,
+            Height + margin.Top + margin.Bottom);
     }
 
     public class Rect2DF : VectorF<Rect2DF>
@@ -200,6 +221,16 @@ namespace Cross.UI.Graphics
         public Rect2DF(float left, float top, Size2DF size) : this(new Point2DF(left, top), size)
         {
 
+        }
+
+        public Rect2DF SubtractPadding(Padding2DF padding)
+        {
+            return new Rect2DF(Left + padding.Left, Top + padding.Top, Right - padding.Right, Bottom - padding.Bottom);
+        }
+
+        public Rect2DF AddMargin(Padding2DF margin)
+        {
+            return new Rect2DF(Left - margin.Left, Top - margin.Top, Right + margin.Right, Bottom + margin.Bottom);
         }
     }
 

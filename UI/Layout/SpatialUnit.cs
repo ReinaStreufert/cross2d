@@ -10,6 +10,18 @@ namespace Cross.UI.Layout
 {
     public class SpatialUnit<TVec> where TVec : IVectorF<TVec>
     {
+        public static SpatialUnit<TVec> Uniform(TVec vec, SpatialRelativity relativity)
+        {
+            var relativityArr = new SpatialRelativity[vec.VecCount];
+            for (int i = 0; i < relativityArr.Length; i++)
+                relativityArr[i] = relativity;
+            return new SpatialUnit<TVec>(vec, relativityArr);
+        }
+
+        public static SpatialUnit<TVec> Absolute(TVec vec) => Uniform(vec, SpatialRelativity.Absolute);
+        public static SpatialUnit<TVec> RelativeTotal(TVec vec) => Uniform(vec, SpatialRelativity.RelativeTotal);
+        public static SpatialUnit<TVec> RelativeRemaining(TVec vec) => Uniform(vec, SpatialRelativity.RelativeRemaining);
+
         public TVec Value { get; }
         public SpatialRelativity[] Relativity { get; }
 

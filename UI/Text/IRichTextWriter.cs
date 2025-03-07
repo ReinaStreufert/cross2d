@@ -1,4 +1,5 @@
-﻿using Cross.UI.Layout;
+﻿using Cross.UI.Graphics;
+using Cross.UI.Layout;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,8 +13,8 @@ namespace Cross.UI.Text
         public void Write(string text);
         public void SetStyleFlags(TextStyle style);
         public void ClearStyleFlags(TextStyle style);
-        public void SetTextColor(Vec4 color);
-        public void SetFontSize(UnitValue<Vec1> size);
+        public void SetTextColor(ColorRGBA textColor);
+        public void SetFontSize(SpatialUnit<Vec1DF> size);
         public void SetFontFamily(string fontFamilyName);
     }
 

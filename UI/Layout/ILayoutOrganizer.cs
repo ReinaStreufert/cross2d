@@ -11,30 +11,30 @@ namespace Cross.UI.Layout
 {
     public interface ILayoutOrganizer
     {
-        public LayoutSize GetSize(IImmutableAttributeContext context);
+        public LayoutSize GetSize(ILayoutContext context);
         public void OrganizeComponents(ILayoutOrganizerContext context);
     }
 
     public interface ILayoutContext : IImmutableAttributeContext
     {
-        public IEnumerable<ILayoutElement> Elements { get; }
+        public IEnumerable<ILayoutComponent> Elements { get; }
     }
 
     public interface ILayoutOrganizerContext : IImmutableAttributeContext
     {
         public Size2DF ClientSize { get; }
-        public IEnumerable<ILayoutElementOrganizer> Elements { get; }
+        public IEnumerable<ILayoutComponentOrganizer> Elements { get; }
     }
 
-    public interface ILayoutElement
+    public interface ILayoutComponent
     {
         public IComponentTreeNode ComponentNode { get; }
-        public SpatialUnit<Size2DF> SpatialSize { get; }
+        public LayoutSize SpatialSize { get; }
     }
 
-    public interface ILayoutElementOrganizer : ILayoutElement
+    public interface ILayoutComponentOrganizer : ILayoutComponent
     {
-        public Rect2DF ClientRect { get; }
+        public AbsoluteLayoutSize Size { get; }
         public void SetTopLeft(Point2DF topLeft);
     }
 
@@ -71,7 +71,12 @@ namespace Cross.UI.Layout
 
         public AbsoluteLayoutSize ToAbsolute(Size2DF totalAvailable, Size2DF remainingSpace)
         {
+            var totalAvailableP = new Padding2DF(totalAvailable.Width, totalAvailable.Height, totalAvailable.Width, totalAvailable.Height);
+            var remainingSpaceP = new Padding2DF(remainingSpace.Width, remainingSpace.Height, remainingSpace.Width, remainingSpace.Height);
             var contentSize = ContentSize.ToAbsolute(totalAvailable, remainingSpace);
+            var padding = Padding.ToAbsolute(totalAvailableP, remainingSpaceP);
+            var margin = Margin.ToAbsolute(totalAvailableP, remainingSpaceP);
+            return new AbsoluteLayoutSize(contentSize, padding, margin);
         }
 
         public IEnumerator<SpatialUnit<Size2DF>> GetEnumerator()
@@ -87,8 +92,18 @@ namespace Cross.UI.Layout
 
     public class AbsoluteLayoutSize : LayoutSize<Size2DF, Padding2DF>
     {
+        public Size2DF PaddedSize => ContentSize.SubtractPadding(Padding);
+        public Size2DF MarginedSize => ContentSize.AddMargin(Margin);
+
         public AbsoluteLayoutSize(Size2DF contentSize, Padding2DF padding, Padding2DF margin) : base(contentSize, padding, margin)
         {
         }
+
+        public Rect2DF GetContentRect(Point2DF topLeft) => 
+            new Rect2DF(topLeft, ContentSize);
+        public Rect2DF GetPaddedRect(Point2DF topLeft) => 
+            GetContentRect(topLeft).SubtractPadding(Padding);
+        public Rect2DF GetMarginedRect(Point2DF topLeft) => 
+            GetContentRect(topLeft).AddMargin(Margin);
     }
 }
