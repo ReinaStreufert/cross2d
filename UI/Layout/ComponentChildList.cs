@@ -10,7 +10,7 @@ namespace Cross.UI.Layout
 {
     public partial class ComponentTree<TNodeResource, TRenderTarget>
     {
-        public class ComponentChildList : IEnumerable<LayoutNode>
+        private class ComponentChildList : IEnumerable<LayoutNode>
         {
             public ComponentTree<TNodeResource, TRenderTarget> Tree { get; }
             public LayoutNode Node { get; }
@@ -31,7 +31,7 @@ namespace Cross.UI.Layout
             public void SetInvalidated(DateTime t) => _LastInvalidated = t.Ticks;
             public LayoutNode? TryFromComponent(IComponent component) => _ChildDict.TryGetValue(component, out var val) ? val : null;
 
-            public void DoValidation()
+            public void Validate()
             {
                 if (_LastInvalidated > Tree.LastValidated)
                 {
@@ -48,7 +48,7 @@ namespace Cross.UI.Layout
                         .ToImmutableDictionary(n => n.Component);
                 }
                 foreach (var child in this)
-                    child.ChildList.DoValidation();
+                    child.ChildList.Validate();
             }
 
 

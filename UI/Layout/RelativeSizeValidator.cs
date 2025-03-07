@@ -24,6 +24,7 @@ namespace Cross.UI.Layout
                     SpatialUnit<Padding2DF>.Absolute(new Padding2DF()),
                     SpatialUnit<Padding2DF>.Absolute(new Padding2DF()));
                 _AttrContext = tree.AttributeProvider.CreateDependencyCollectorContext(node);
+                _AttrContext.OnDependencyMutated += DependencyMutationCallback;
                 _LayoutContext = new LayoutContext(node, _AttrContext);
             }
 
@@ -32,15 +33,24 @@ namespace Cross.UI.Layout
             private LayoutContext _LayoutContext;
 
             public void SetInvalidated(DateTime t) => _LastInvalidated = t.Ticks;
-            public void DoValidation()
+            public void Validate()
             {
                 foreach (var child in Node.ChildList)
-                    child.RelativeSizeValidator.DoValidation();
+                    child.SizeValidator?.Validate();
                 if (_LastInvalidated > Tree.LastValidated)
                 {
                     _AttrContext.ReleaseDependencies();
                     Size = Node.Component.Organizer.GetSize(_LayoutContext);
                 }
+            }
+
+            private void DependencyMutationCallback()
+            {
+                var t = DateTime.Now;
+                SetInvalidated(t);
+                Node.PlacementValidator.SetInvalidated(t);
+                Node.Parent?.PlacementValidator.SetInvalidated(t);
+                Tree._Destination.Invalidate(t);
             }
         }
     }

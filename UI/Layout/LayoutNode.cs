@@ -11,23 +11,33 @@ namespace Cross.UI.Layout
 {
     public partial class ComponentTree<TNodeResource, TRenderTarget>
     {
-        public class LayoutNode : IComponentTreeNode<TNodeResource>
+        private class LayoutNode : IComponentTreeNode<TNodeResource>
         {
             public ComponentTree<TNodeResource, TRenderTarget> Tree { get; }
             public IComponent Component { get; }
+            public LayoutNode? Parent => _Parent;
             public ComponentChildList ChildList { get; }
-            public RelativeSizeValidator RelativeSizeValidator { get; }
+            public ChildPlacementValidator PlacementValidator { get; }
+            public RelativeSizeValidator SizeValidator { get; }
 
             public LayoutNode(IComponent component, ComponentTree<TNodeResource, TRenderTarget> tree, LayoutNode? parent)
             {
                 Tree = tree;
                 Component = component;
                 _Parent = parent;
+                ChildList = new ComponentChildList(tree, this);
+                PlacementValidator = new ChildPlacementValidator(tree, this);
+                SizeValidator = new RelativeSizeValidator(tree, this);
             }
 
             private LayoutNode? _Parent;
 
-            public IComponentTreeNode<TNodeResource>? Parent => throw new NotImplementedException();
+            public void SetGraphicsInvalidated(DateTime t)
+            {
+
+            }
+
+            IComponentTreeNode<TNodeResource>? IComponentTreeNode<TNodeResource>.Parent => _Parent;
 
             public IEnumerable<IComponentTreeNode<TNodeResource>> Children => throw new NotImplementedException();
 
