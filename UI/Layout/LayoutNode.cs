@@ -19,6 +19,8 @@ namespace Cross.UI.Layout
             public ComponentChildList ChildList { get; }
             public ChildPlacementValidator PlacementValidator { get; }
             public RelativeSizeValidator SizeValidator { get; }
+            public GraphicValidator[] GraphicValidators { get; }
+            public GraphicValidator TopLevelGraphic => GraphicValidators[GraphicValidators.Length - 1];
 
             public LayoutNode(IComponent component, ComponentTree<TNodeResource, TRenderTarget> tree, LayoutNode? parent)
             {
@@ -28,6 +30,9 @@ namespace Cross.UI.Layout
                 ChildList = new ComponentChildList(tree, this);
                 PlacementValidator = new ChildPlacementValidator(tree, this);
                 SizeValidator = new RelativeSizeValidator(tree, this);
+                GraphicValidators = component.Graphics
+                    .Select((g, i) => new GraphicValidator(tree, this, g, i))
+                    .ToArray();
             }
 
             private LayoutNode? _Parent;
