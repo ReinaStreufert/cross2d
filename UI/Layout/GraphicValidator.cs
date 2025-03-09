@@ -25,6 +25,8 @@ namespace Cross.UI.Layout
                 Node = node;
                 _Graphic = graphic;
                 _ValidatorIndex = validatorIndex;
+                _AttrContext = tree.AttributeProvider.CreateDependencyCollectorContext(node);
+                _AttrContext.OnDependencyMutated += DependencyMutationCallback;
             }
 
             private IComponentGraphic _Graphic;
@@ -32,6 +34,7 @@ namespace Cross.UI.Layout
             private Padding2DF _LastOverflow = new Padding2DF();
             private long _LastInvalidated;
             private TRenderTarget? _Buffer;
+            private IDependencyCollectorAttrContext _AttrContext;
 
             public void SetInvalidated(DateTime t)
             {
@@ -40,9 +43,22 @@ namespace Cross.UI.Layout
                     Next.SetInvalidated(t);
             }
 
-            public void Validate()
+            public void Validate(IRenderDevice<TRenderTarget> device)
             {
-
+                Prev?.Validate(device);
+                _AttrContext.ReleaseDependencies();
+                var inputSize = GetInputSize();
+                _LastOverflow = _Graphic.GetOverflow(_AttrContext, inputSize);
+                var overflowSize = inputSize.AddMargin(_LastOverflow);
+                if (_Buffer == null || _Buffer.Size != overflowSize)
+                {
+                    if (_Buffer != null)
+                        _Buffer.Dispose();
+                    _Buffer = device.NewRenderBuffer(overflowSize);
+                }
+                device.PushRenderTarget(_Buffer);
+                device.DrawGraphic(_Graphic, _AttrContext, Prev?._Buffer, new Rect2DF(0, 0, overflowSize));
+                device.PopRenderTarget();
             }
 
             public Rect2DF GetOverflowRect(Point2DF topLeft)
@@ -53,6 +69,30 @@ namespace Cross.UI.Layout
                 else
                     baseRect = Prev.GetOverflowRect(topLeft);
                 return baseRect.AddMargin(_LastOverflow);
+            }
+
+            public Size2DF GetOverflowSize()
+            {
+                Size2DF baseSize;
+                if (Prev == null)
+                    baseSize = Node.PlacementValidator.AbsoluteSize.ContentSize;
+                else
+                    baseSize = Prev.GetOverflowSize();
+                return baseSize.AddMargin(_LastOverflow);
+            }
+
+            public Size2DF GetInputSize()
+            {
+                if (Prev == null)
+                    return Node.PlacementValidator.AbsoluteSize.ContentSize;
+                else
+                    return Prev.GetOverflowSize();
+            }
+
+            private void DependencyMutationCallback()
+            {
+                SetInvalidated(DateTime.Now);
+                Tree._Destination.Invalidate();
             }
         }
     }

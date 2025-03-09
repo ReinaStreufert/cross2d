@@ -33,7 +33,7 @@ namespace Cross.UI.Layout
             private class LayoutComponent : ILayoutComponent
             {
                 public IComponentTreeNode ComponentNode => _Node;
-                public LayoutSize SpatialSize => _Node.RelativeSizeValidator.Size;
+                public LayoutSize SpatialSize => _Node.SizeValidator.Size;
 
                 public LayoutComponent(LayoutNode node)
                 {

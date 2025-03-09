@@ -33,7 +33,7 @@ namespace Cross.UI.Layout
 
             public void SetInvalidated(DateTime t) => _LastInvalidated = t.Ticks;
 
-            public void Validate(DirtyRectList dirtyList)
+            public void Validate(DirtyRectList dirtyList, IRenderDevice<TRenderTarget> device)
             {
                 if (_LastInvalidated > Tree.LastValidated)
                 {
@@ -45,10 +45,10 @@ namespace Cross.UI.Layout
                     _AttrContext.ReleaseDependencies();
                     var organizerContext = new LayoutOrganizerContext(Node, _AttrContext, spatialContext);
                     Node.Component.Organizer.OrganizeComponents(organizerContext);
-                    organizerContext.Apply(dirtyList);
+                    organizerContext.Apply(dirtyList, device);
                 }
                 foreach (var child in Node.ChildList)
-                    child.PlacementValidator.Validate(dirtyList);
+                    child.PlacementValidator.Validate(dirtyList, device);
             }
 
             private void DependencyMutationCallback()
@@ -82,10 +82,10 @@ namespace Cross.UI.Layout
                 public bool TryGetAttribute<T>(Key<T> key, out T? val) => TryGetAttribute(key, out val);
                 public bool TryGetAttribute<T>(IComponentTreeNode descendant, Key<T> key, out T? val) => TryGetAttribute(descendant, key, out val);
 
-                public void Apply(DirtyRectList dirtyList)
+                public void Apply(DirtyRectList dirtyList, IRenderDevice<TRenderTarget> device)
                 {
                     foreach (var organizer in _Organizers)
-                        organizer.Apply(dirtyList);
+                        organizer.Apply(dirtyList, device);
                 }
             }
 
@@ -116,7 +116,7 @@ namespace Cross.UI.Layout
                     _TopLeft = topLeft;
                 }
 
-                public void Apply(DirtyRectList dirtyList)
+                public void Apply(DirtyRectList dirtyList, IRenderDevice<TRenderTarget> device)
                 {
                     var oldContentSize = _Node.PlacementValidator.AbsoluteSize.ContentSize;
                     Rect2DF? oldOverflowRect = null;
@@ -125,7 +125,7 @@ namespace Cross.UI.Layout
                     _Node.PlacementValidator._AbsoluteSize = Size;
                     _Node.PlacementValidator._TopLeft = _TopLeft;
                     var graphicWasInvalid = _Node.TopLevelGraphic.IsInvalid;
-                    _Node.TopLevelGraphic.Validate();
+                    _Node.TopLevelGraphic.Validate(device);
                     var overflowRect = _Node.TopLevelGraphic.GetOverflowRect(_TopLeft);
                     if (!overflowRect.Equals(oldOverflowRect))
                     {
