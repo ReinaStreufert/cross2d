@@ -21,6 +21,7 @@ namespace Cross.UI.Layout
             public RelativeSizeValidator SizeValidator { get; }
             public GraphicValidator[] GraphicValidators { get; }
             public GraphicValidator TopLevelGraphic => GraphicValidators[GraphicValidators.Length - 1];
+            public TNodeResource Resources { get; }
 
             public LayoutNode(IComponent component, ComponentTree<TNodeResource, TRenderTarget> tree, LayoutNode? parent)
             {
@@ -33,33 +34,31 @@ namespace Cross.UI.Layout
                 GraphicValidators = component.Graphics
                     .Select((g, i) => new GraphicValidator(tree, this, g, i))
                     .ToArray();
+                Resources = tree.NodeInitializer.InitializeNode(this);
+                if (parent != null)
+                    _Ancestors = new HashSet<IComponent>(parent._Ancestors.Append(parent.Component));
+                else
+                    _Ancestors = new HashSet<IComponent>();
             }
 
             private LayoutNode? _Parent;
+            private HashSet<IComponent> _Ancestors;
 
-            public void SetGraphicsInvalidated(DateTime t)
+            public void Validate(DirtyRectList dirtyList, IRenderDevice<TRenderTarget> device)
             {
-
+                ChildList.Validate();
+                SizeValidator.Validate();
+                PlacementValidator.Validate(dirtyList, device);
             }
 
+            public void SetGraphicsInvalidated(DateTime t) => GraphicValidators[0].SetInvalidated(t);
             IComponentTreeNode<TNodeResource>? IComponentTreeNode<TNodeResource>.Parent => _Parent;
-
-            public IEnumerable<IComponentTreeNode<TNodeResource>> Children => throw new NotImplementedException();
-
-            public TNodeResource Resources => throw new NotImplementedException();
-
-            public Rect2DF OverflowRect => throw new NotImplementedException();
-
-            public Rect2DF ContentRect => throw new NotImplementedException();
-            
-            IComponentTreeNode? IComponentTreeNode.Parent => throw new NotImplementedException();
-
-            IEnumerable<IComponentTreeNode> IComponentTreeNode.Children => throw new NotImplementedException();
-
-            public bool IsDescendant(IComponent component)
-            {
-                throw new NotImplementedException();
-            }
+            IEnumerable<IComponentTreeNode<TNodeResource>> IComponentTreeNode<TNodeResource>.Children => ChildList;
+            Rect2DF IComponentTreeNode.OverflowRect => TopLevelGraphic.GetOverflowRect(PlacementValidator.TopLeft);
+            Rect2DF IComponentTreeNode.ContentRect => PlacementValidator.AbsoluteSize.GetContentRect(PlacementValidator.TopLeft);
+            IComponentTreeNode? IComponentTreeNode.Parent => _Parent;
+            IEnumerable<IComponentTreeNode> IComponentTreeNode.Children => ChildList;
+            public bool IsDescendant(IComponent component) => _Ancestors.Contains(component);
         }
     }
 }

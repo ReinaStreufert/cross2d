@@ -23,12 +23,12 @@ namespace Cross.UI.Layout
         {
             AttributeProvider = attributeProvider;
             RootSize = layoutSize;
-            Root = new LayoutValidator(this, rootComponent, new Rect2DF(0, 0, layoutSize.Width, layoutSize.Height), null);
+            Root = new LayoutNode(rootComponent, this, null);
             _Destination = compositionDestination;
             NodeInitializer = nodeInitializer;
         }
 
-        private long LastValidated;
+        private long _LastValidated;
         private LayoutNode Root;
         private Size2DF RootSize;
         private long SizeLastInvalidated = 0;
@@ -38,6 +38,8 @@ namespace Cross.UI.Layout
         {
             DateTime invalTime = DateTime.Now;
             RootSize = layoutSize;
+            Root.SetGraphicsInvalidated(invalTime);
+            Root.PlacementValidator.SetInvalidated(invalTime);
             InterlockedMath.Max(ref SizeLastInvalidated, invalTime.Ticks);
             _Destination.Invalidate();
         }
@@ -47,33 +49,28 @@ namespace Cross.UI.Layout
             var dirtyRects = new DirtyRectList();
             await AttributeProvider.FreezeWhenSafeAsync();
             var validAsOf = DateTime.Now;
-            if (SizeLastInvalidated > LastValidated)
-            {
-                Root.ContentRect = new Rect2DF(0, 0, RootSize);
-                Root.SetInvalidated(validAsOf);
-            }
-            foreach (var layout in Traverse(Root))
-            {
-                layout.DoValidation(dirtyRects);
-                foreach (var graphic in layout.GraphicChain)
-                    graphic.DoValidation(dc, dirtyRects);
-            }
-            LastValidated = validAsOf.Ticks;
+            if (SizeLastInvalidated > _LastValidated)
+                dirtyRects.Dirty(RootNode.OverflowRect);
+            Root.Validate(dirtyRects, dc);
+            if (SizeLastInvalidated > _LastValidated)
+                dirtyRects.Dirty(RootNode.OverflowRect);
+            _LastValidated = validAsOf.Ticks;
             AttributeProvider.Unfreeze();
-            var compositeRects = Traverse(Root)
-                .Select(l => new CompositeRect<TRenderTarget>(l.OverflowRect, l.OverflowBuffer!))
+            var compositeRects = GetCompositeRects(Root)
                 .ToArray();
             var windowRect = new Rect2DF(0, 0, RootSize);
             return new CompositionFrame<TRenderTarget>(windowRect, validAsOf, compositeRects, dirtyRects);
         }
 
-        private IEnumerable<LayoutNode> Traverse(LayoutNode validation)
+        private IEnumerable<CompositeRect<TRenderTarget>> GetCompositeRects(LayoutNode validation)
         {
-            yield return validation;
-            if (validation.LastChildren == null)
-                yield break;
-            foreach (var recursChild in validation.LastChildren.Values.SelectMany(c => Traverse(c)))
-                yield return recursChild;
+            var topLeft = validation.PlacementValidator.TopLeft;
+            yield return new CompositeRect<TRenderTarget>(validation.TopLevelGraphic.GetOverflowRect(topLeft), validation.TopLevelGraphic.Buffer);
+            foreach (var child in validation.ChildList)
+            {
+                foreach (var result in GetCompositeRects(child))
+                    yield return result;
+            }
         }
 
         private class NewChildNode : IComponentTreeNode

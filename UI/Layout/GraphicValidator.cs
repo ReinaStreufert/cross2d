@@ -1,4 +1,5 @@
-﻿using Cross.UI.Graphics;
+﻿using Cross.Threading;
+using Cross.UI.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,7 +18,8 @@ namespace Cross.UI.Layout
                 Node.GraphicValidators[_ValidatorIndex - 1] : null;
             public GraphicValidator? Next => _ValidatorIndex < Node.GraphicValidators.Length - 1 ?
                 Node.GraphicValidators[_ValidatorIndex + 1] : null;
-            public bool IsInvalid => _LastInvalidated > Tree.LastValidated;
+            public bool IsInvalid => _LastInvalidated > Tree._LastValidated;
+            public TRenderTarget Buffer => _Buffer ?? throw new InvalidOperationException();
 
             public GraphicValidator(ComponentTree<TNodeResource, TRenderTarget> tree, LayoutNode node, IComponentGraphic graphic, int validatorIndex)
             {
@@ -38,7 +40,7 @@ namespace Cross.UI.Layout
 
             public void SetInvalidated(DateTime t)
             {
-                _LastInvalidated = t.Ticks;
+                InterlockedMath.Max(ref _LastInvalidated, t.Ticks);
                 if (Next != null)
                     Next.SetInvalidated(t);
             }

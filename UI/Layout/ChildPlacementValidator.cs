@@ -1,4 +1,5 @@
-﻿using Cross.UI.Graphics;
+﻿using Cross.Threading;
+using Cross.UI.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,11 +32,11 @@ namespace Cross.UI.Layout
             private AbsoluteLayoutSize _AbsoluteSize;
             private IDependencyCollectorAttrContext _AttrContext;
 
-            public void SetInvalidated(DateTime t) => _LastInvalidated = t.Ticks;
+            public void SetInvalidated(DateTime t) => InterlockedMath.Max(ref _LastInvalidated, t.Ticks);
 
             public void Validate(DirtyRectList dirtyList, IRenderDevice<TRenderTarget> device)
             {
-                if (_LastInvalidated > Tree.LastValidated)
+                if (_LastInvalidated > Tree._LastValidated)
                 {
                     if (Node.Parent == null)
                         _AbsoluteSize = new AbsoluteLayoutSize(Tree.RootSize, new Padding2DF(), new Padding2DF());
@@ -102,12 +103,17 @@ namespace Cross.UI.Layout
                     _OldTopLeft = _Node.PlacementValidator.TopLeft;
                     _TopLeft = new Point2DF();
                     _ParentSize = spatialContext.TotalSpace;
+                    if (_Node.Parent == null)
+                        _ParentTopLeft = new Point2DF(0, 0);
+                    else
+                        _ParentTopLeft = _Node.Parent.PlacementValidator.TopLeft;
                 }
 
                 private LayoutNode _Node;
                 private Point2DF _OldTopLeft;
                 private Point2DF _TopLeft;
                 private Size2DF _ParentSize;
+                private Point2DF _ParentTopLeft;
 
                 public void SetTopLeft(Point2DF topLeft)
                 {
@@ -123,10 +129,10 @@ namespace Cross.UI.Layout
                     if (oldContentSize.Width > 0 && oldContentSize.Height > 0)
                         oldOverflowRect = _Node.TopLevelGraphic.GetOverflowRect(_OldTopLeft);
                     _Node.PlacementValidator._AbsoluteSize = Size;
-                    _Node.PlacementValidator._TopLeft = _TopLeft;
+                    _Node.PlacementValidator._TopLeft = _ParentTopLeft + _TopLeft;
                     var graphicWasInvalid = _Node.TopLevelGraphic.IsInvalid;
                     _Node.TopLevelGraphic.Validate(device);
-                    var overflowRect = _Node.TopLevelGraphic.GetOverflowRect(_TopLeft);
+                    var overflowRect = _Node.TopLevelGraphic.GetOverflowRect(_ParentTopLeft + _TopLeft);
                     if (!overflowRect.Equals(oldOverflowRect))
                     {
                         if (oldOverflowRect != null)

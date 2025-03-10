@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Cross.Threading;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -28,12 +29,12 @@ namespace Cross.UI.Layout
             private IDependencyCollectorAttrContext _AttrContext;
             private long _LastInvalidated;
 
-            public void SetInvalidated(DateTime t) => _LastInvalidated = t.Ticks;
+            public void SetInvalidated(DateTime t) => InterlockedMath.Max(ref _LastInvalidated, t.Ticks);
             public LayoutNode? TryFromComponent(IComponent component) => _ChildDict.TryGetValue(component, out var val) ? val : null;
 
             public void Validate()
             {
-                if (_LastInvalidated > Tree.LastValidated)
+                if (_LastInvalidated > Tree._LastValidated)
                 {
                     _AttrContext.ReleaseDependencies();
                     var generatedChildren = Node.Component.ChildProvider.GetChildren(_AttrContext);

@@ -1,4 +1,5 @@
-﻿using Cross.UI.Graphics;
+﻿using Cross.Threading;
+using Cross.UI.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,12 +33,12 @@ namespace Cross.UI.Layout
             private IDependencyCollectorAttrContext _AttrContext;
             private LayoutContext _LayoutContext;
 
-            public void SetInvalidated(DateTime t) => _LastInvalidated = t.Ticks;
+            public void SetInvalidated(DateTime t) => InterlockedMath.Max(ref _LastInvalidated, t.Ticks);
             public void Validate()
             {
                 foreach (var child in Node.ChildList)
                     child.SizeValidator?.Validate();
-                if (_LastInvalidated > Tree.LastValidated)
+                if (_LastInvalidated > Tree._LastValidated)
                 {
                     _AttrContext.ReleaseDependencies();
                     Size = Node.Component.Organizer.GetSize(_LayoutContext);
