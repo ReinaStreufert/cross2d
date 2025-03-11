@@ -11,6 +11,7 @@ namespace Cross.UI.Layout
     {
         public TVec TotalSpace { get; }
         public TVec RemainingSpace => Vec.Subtract(TotalSpace, _SpaceUsed);
+        public TVec SpaceUsed => _SpaceUsed;
 
         public SpatialContext(TVec totalSpace)
         {
