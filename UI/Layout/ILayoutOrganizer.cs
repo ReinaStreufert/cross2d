@@ -34,8 +34,7 @@ namespace Cross.UI.Layout
 
     public interface ILayoutComponentOrganizer : ILayoutComponent
     {
-        public AbsoluteLayoutSize Size { get; }
-        public void SetTopLeft(Point2DF topLeft);
+        public void SetPosition(Point2DF topLeft, AbsoluteLayoutSize size);
     }
 
     public abstract class LayoutSize<TSizeUnit, TPadUnit>
@@ -63,10 +62,10 @@ namespace Cross.UI.Layout
         private IEnumerable<SpatialUnit<Size2DF>> EnumerateSpatialSizes()
         {
             yield return ContentSize;
-            var paddingVal = Padding.Value;
-            var paddingRelativity = Padding.Relativity;
-            yield return new SpatialUnit<Size2DF>(new Size2DF(paddingVal.Left, paddingVal.Top), paddingRelativity[0], paddingRelativity[1]);
-            yield return new SpatialUnit<Size2DF>(new Size2DF(paddingVal.Right, paddingVal.Bottom), paddingRelativity[2], paddingRelativity[3]);
+            var marginVal = Margin.Value;
+            var marginRel = Margin.Relativity;
+            yield return new SpatialUnit<Size2DF>(new Size2DF(marginVal.Left, marginVal.Top), marginRel[0], marginRel[1]);
+            yield return new SpatialUnit<Size2DF>(new Size2DF(marginVal.Right, marginVal.Bottom), marginRel[2], marginRel[3]);
         }
 
         public AbsoluteLayoutSize ToAbsolute(Size2DF totalAvailable, Size2DF remainingSpace)

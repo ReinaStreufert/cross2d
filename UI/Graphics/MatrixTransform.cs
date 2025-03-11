@@ -28,6 +28,44 @@ namespace Cross.UI.Graphics
         public int VecCount => _VecCount;
     }
 
+    public class IterativeTransform : IVectorF
+    {
+        public int VecCount => _VecCount;
+
+        public IterativeTransform(IEnumerable<IVectorF> vecs, Func<int, float, float, float> iterativeTransformFunc)
+        {
+            var first = vecs.FirstOrDefault();
+            if (first == null)
+                throw new ArgumentException(nameof(vecs));
+            _FirstVec = first;
+            _Vecs = vecs.Skip(1);
+            _VecCount = first.VecCount;
+            _IterativeTransformFunc = iterativeTransformFunc;
+        }
+
+        private IEnumerable<IVectorF> _Vecs;
+        private IVectorF _FirstVec;
+        private int _VecCount;
+        private Func<int, float, float, float> _IterativeTransformFunc;
+
+        public float this[int index]
+        {
+            get
+            {
+                float iterVal = _FirstVec[index];
+                int n = 0;
+                foreach (var vec in _Vecs)
+                {
+                    if (vec.VecCount != _VecCount)
+                        throw new InvalidOperationException("The collection contained vectors of inconsistent length");
+                    iterVal = _IterativeTransformFunc(n, iterVal, vec[index]);
+                    n++;
+                }
+                return iterVal;
+            }
+        }
+    }
+
     public class UniformTransform : IVectorF
     {
         private IVectorF _Vec;

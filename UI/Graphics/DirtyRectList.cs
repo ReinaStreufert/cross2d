@@ -21,8 +21,8 @@ namespace Cross.UI.Graphics
         public IEnumerable<Rect2DF> FindIntersections(Rect2DF rect)
         {
             return DirtyRects
-                .Where(d => VectorMath.Intersects(d, rect))
-                .Select(d => VectorMath.Intersection(d, rect));
+                .Where(d => d.Intersects(rect))
+                .Select(d => d.Intersection(rect));
         }
 
         public void Dirty(Rect2DF rect)
@@ -37,9 +37,9 @@ namespace Cross.UI.Graphics
         {
             foreach (var rect in rects)
             {
-                if (VectorMath.Intersects(rect, existingRect))
+                if (rect.Intersects(existingRect))
                 {
-                    foreach (var diffRect in VectorMath.Difference(rect, existingRect))
+                    foreach (var diffRect in rect.Difference(existingRect))
                         yield return diffRect;
                 }
                 else yield return rect;

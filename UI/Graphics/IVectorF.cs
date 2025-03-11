@@ -223,6 +223,51 @@ namespace Cross.UI.Graphics
 
         }
 
+        public bool Intersects(Rect2DF rect)
+        {
+            return Right >= rect.Left && Left <= rect.Right &&
+                Bottom >= rect.Top && Top <= rect.Bottom;
+        }
+
+        public Rect2DF Intersection(Rect2DF rect)
+        {
+            return new Rect2DF(
+                Math.Max(Left, rect.Left),
+                Math.Min(Right, rect.Right),
+                Math.Max(Top, rect.Top),
+                Math.Min(Bottom, rect.Bottom));
+        }
+
+        public IEnumerable<Rect2DF> Difference(Rect2DF rect)
+        {
+            var verticalMinLeft = Left;
+            var verticalMaxRight = Right;
+            // left clip
+            if (Left < rect.Left)
+            {
+                yield return new Rect2DF(Left, Top, rect.Left - 1, Bottom);
+                verticalMinLeft = rect.Left - 1;
+            }
+            // right clip
+            if (Right > rect.Right)
+            {
+                yield return new Rect2DF(rect.Right + 1, Top, Right, Bottom);
+                verticalMaxRight = rect.Right + 1;
+            }
+            var verticalLeft = Math.Max(Left, verticalMinLeft);
+            var verticalRight = Math.Min(Right, verticalMaxRight);
+            // top clip
+            if (Top < rect.Top)
+                yield return new Rect2DF(verticalLeft, Top, verticalRight, rect.Top - 1);
+            if (Bottom > rect.Bottom)
+                yield return new Rect2DF(verticalLeft, rect.Bottom + 1, verticalRight, Bottom);
+        }
+
+        public bool Contains(Point2DF point)
+        {
+            return (point.X >= Left && point.X <= Right && point.Y >= Top && point.Y <= Bottom);
+        }
+
         public Rect2DF SubtractPadding(Padding2DF padding)
         {
             return new Rect2DF(Left + padding.Left, Top + padding.Top, Right - padding.Right, Bottom - padding.Bottom);

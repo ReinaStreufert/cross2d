@@ -40,11 +40,8 @@ namespace Cross.UI.Layout
                 {
                     if (Node.Parent == null)
                         _AbsoluteSize = new AbsoluteLayoutSize(Tree.RootSize, new Padding2DF(), new Padding2DF());
-                    var spatialContext = new SpatialContext<Size2DF>(_AbsoluteSize.PaddedSize);
-                    foreach (var size in Node.ChildList.SelectMany(c => c.SizeValidator.Size))
-                        spatialContext.Claim(size);
                     _AttrContext.ReleaseDependencies();
-                    var organizerContext = new LayoutOrganizerContext(Node, _AttrContext, spatialContext);
+                    var organizerContext = new LayoutOrganizerContext(Node, _AttrContext);
                     Node.Component.Organizer.OrganizeComponents(organizerContext);
                     organizerContext.Apply(dirtyList, device);
                 }
@@ -63,12 +60,13 @@ namespace Cross.UI.Layout
                 public Size2DF ClientSize => _Node.PlacementValidator.AbsoluteSize.PaddedSize;
                 public IEnumerable<ILayoutComponentOrganizer> Elements => _Organizers;
 
-                public LayoutOrganizerContext(LayoutNode node, IImmutableAttributeContext attrContext, SpatialContext<Size2DF> spatialContext)
+                public LayoutOrganizerContext(LayoutNode node, IImmutableAttributeContext attrContext)
                 {
                     _Node = node;
                     _AttrContext = attrContext;
+                    var paddingRect = _Node.PlacementValidator.AbsoluteSize.GetPaddedRect(_Node.PlacementValidator.TopLeft);
                     _Organizers = node.ChildList
-                        .Select(n => new LayoutComponentOrganizer(n, spatialContext))
+                        .Select(n => new LayoutComponentOrganizer(n, paddingRect))
                         .ToArray();
                 }
 
@@ -92,47 +90,44 @@ namespace Cross.UI.Layout
 
             private class LayoutComponentOrganizer : ILayoutComponentOrganizer
             {
-                public AbsoluteLayoutSize Size { get; }
                 public LayoutSize SpatialSize => _Node.SizeValidator.Size;
                 public IComponentTreeNode ComponentNode => _Node;
 
-                public LayoutComponentOrganizer(LayoutNode node, SpatialContext<Size2DF> spatialContext)
+                public LayoutComponentOrganizer(LayoutNode node, Rect2DF parentRect)
                 {
                     _Node = node;
-                    Size = node.SizeValidator.Size.ToAbsolute(spatialContext.TotalSpace, spatialContext.RemainingSpace);
                     _OldTopLeft = _Node.PlacementValidator.TopLeft;
                     _TopLeft = new Point2DF();
-                    _ParentSize = spatialContext.TotalSpace;
-                    if (_Node.Parent == null)
-                        _ParentTopLeft = new Point2DF(0, 0);
-                    else
-                        _ParentTopLeft = _Node.Parent.PlacementValidator.TopLeft;
+                    _ParentRect = parentRect;
                 }
 
                 private LayoutNode _Node;
                 private Point2DF _OldTopLeft;
                 private Point2DF _TopLeft;
-                private Size2DF _ParentSize;
-                private Point2DF _ParentTopLeft;
+                private AbsoluteLayoutSize? _LayoutSize;
+                private Rect2DF _ParentRect;
 
-                public void SetTopLeft(Point2DF topLeft)
+                public void SetPosition(Point2DF topLeft, AbsoluteLayoutSize size)
                 {
-                    if (topLeft.X > _ParentSize.Width || topLeft.X < 0 || topLeft.Y >= _ParentSize.Height || topLeft.Y < 0)
+                    if (topLeft.X > _ParentRect.Width || topLeft.X < 0 || topLeft.Y >= _ParentRect.Height || topLeft.Y < 0)
                         throw new ArgumentOutOfRangeException(nameof(topLeft));
                     _TopLeft = topLeft;
+                    _LayoutSize = size;
                 }
 
                 public void Apply(DirtyRectList dirtyList, IRenderDevice<TRenderTarget> device)
                 {
+                    if (_LayoutSize == null)
+                        throw new InvalidOperationException("Not all components were positioned by the organizer");
                     var oldContentSize = _Node.PlacementValidator.AbsoluteSize.ContentSize;
                     Rect2DF? oldOverflowRect = null;
                     if (oldContentSize.Width > 0 && oldContentSize.Height > 0)
                         oldOverflowRect = _Node.TopLevelGraphic.GetOverflowRect(_OldTopLeft);
-                    _Node.PlacementValidator._AbsoluteSize = Size;
-                    _Node.PlacementValidator._TopLeft = _ParentTopLeft + _TopLeft;
+                    _Node.PlacementValidator._AbsoluteSize = _LayoutSize;
+                    _Node.PlacementValidator._TopLeft = _ParentRect.TopLeft + _TopLeft;
                     var graphicWasInvalid = _Node.TopLevelGraphic.IsInvalid;
                     _Node.TopLevelGraphic.Validate(device);
-                    var overflowRect = _Node.TopLevelGraphic.GetOverflowRect(_ParentTopLeft + _TopLeft);
+                    var overflowRect = _Node.TopLevelGraphic.GetOverflowRect(_ParentRect.TopLeft + _TopLeft);
                     if (!overflowRect.Equals(oldOverflowRect))
                     {
                         if (oldOverflowRect != null)
