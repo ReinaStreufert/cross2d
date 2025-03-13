@@ -14,7 +14,6 @@ namespace Cross.UI.Components
         {
             var padding = context.GetAttributeOrDefault(Attributes.Padding, SpatialUnit<Padding2DF>.Absolute(new Padding2DF()));
             var margin = context.GetAttributeOrDefault(Attributes.Margin, SpatialUnit<Padding2DF>.Absolute(new Padding2DF()));
-            var innerFlow = context.GetAttributeOrDefault(Attributes.InnerFlow, Flow.LeftToRight);
             if (context.TryGetAttribute(Attributes.Size, out var size))
                 return new LayoutSize(size!, padding, margin);
             else
@@ -26,8 +25,82 @@ namespace Cross.UI.Components
 
         public void OrganizeComponents(ILayoutOrganizerContext context)
         {
-            //context.
-            throw new NotImplementedException();
+            var innerFlow = context.GetAttributeOrDefault(Attributes.InnerFlow, Flow.LeftToRight);
+            var innerAlign = context.GetAttributeOrDefault(Attributes.InnerAlign, Alignment.Begin);
+            var clientSize = context.ClientSize;
+            FlowOrganization organization = innerFlow switch
+            {
+                Flow.LeftToRight => new HorizontalOrganization(clientSize, innerAlign, false),
+                Flow.RightToLeft => new HorizontalOrganization(clientSize, innerAlign, true),
+                Flow.TopToBottom => new VerticalOrganization(clientSize, innerAlign, false),
+                Flow.BottomToTop => new VerticalOrganization(clientSize, innerAlign, true),
+                _ => throw new NotImplementedException()
+            };
+            organization.AddRange(context.Elements);
+            organization.Organize(context);
+        }
+
+        private class HorizontalOrganization : FlowOrganization
+        {
+            public HorizontalOrganization(Size2DF clientSize, Alignment innerAlignment, bool reverse) : base(clientSize, reverse ? Flow.RightToLeft : Flow.LeftToRight, innerAlignment)
+            {
+                _Reverse = reverse;
+            }
+
+            private bool _Reverse;
+
+            protected override Size2DF FlowCrossToWH(Vec1DF flowSpace, Vec1DF crossSpace) => new Size2DF(flowSpace.Value, crossSpace.Value);
+            protected override Vec1DF GetSpace(IVectorF vec, SpaceType type) => new Vec1DF(type == SpaceType.Flow ? vec[0] : vec[1]);
+
+            protected override SpatialUnit<Vec1DF> GetSpace<TVec, TUnit>(TUnit unit, SpaceType flow)
+            {
+                if (flow == SpaceType.Flow)
+                    return new SpatialUnit<Vec1DF>(new Vec1DF(unit.Value[0]), unit.Relativity[0]);
+                else
+                    return new SpatialUnit<Vec1DF>(new Vec1DF(unit.Value[1]), unit.Relativity[1]);
+            }
+
+            protected override Point2DF Increment(Point2DF point, Vec1DF offset, SpaceType type)
+            {
+                if (type == SpaceType.Flow)
+                    return new Point2DF(point.X + Directional(offset), point.Y);
+                else
+                    return new Point2DF(point.X, point.Y + Directional(offset));
+            }
+
+            private float Directional(Vec1DF offset) => _Reverse ? -offset.Value : offset.Value;
+
+            
+        }
+
+        private class VerticalOrganization : FlowOrganization
+        {
+            public VerticalOrganization(Size2DF clientSize, Alignment innerAlignment, bool reverse) : base(clientSize, reverse ? Flow.BottomToTop : Flow.TopToBottom, innerAlignment)
+            {
+            }
+
+            private bool _Reverse;
+
+            protected override Size2DF FlowCrossToWH(Vec1DF flowSpace, Vec1DF crossSpace) => new Size2DF(crossSpace.Value, flowSpace.Value);
+            protected override Vec1DF GetSpace(IVectorF vec, SpaceType type) => new Vec1DF(type == SpaceType.Flow ? vec[1] : vec[0]);
+
+            protected override SpatialUnit<Vec1DF> GetSpace<TVec, TUnit>(TUnit unit, SpaceType flow)
+            {
+                if (flow == SpaceType.Flow)
+                    return new SpatialUnit<Vec1DF>(new Vec1DF(unit.Value[1]), unit.Relativity[1]);
+                else
+                    return new SpatialUnit<Vec1DF>(new Vec1DF(unit.Value[0]), unit.Relativity[0]);
+            }
+
+            protected override Point2DF Increment(Point2DF point, Vec1DF offset, SpaceType type)
+            {
+                if (type == SpaceType.Flow)
+                    return new Point2DF(point.X, point.Y + Directional(offset));
+                else
+                    return new Point2DF(point.X + Directional(offset), point.Y);
+            }
+
+            private float Directional(Vec1DF offset) => _Reverse ? -offset.Value : offset.Value;
         }
 
         private abstract class FlowOrganization
@@ -35,7 +108,6 @@ namespace Cross.UI.Components
             public Flow InnerFlow { get; }
             public Alignment InnerAlignment { get; }
             public Size2DF ClientSize { get; }
-            public IEnumerable<FlowRow> Rows => _Rows;
 
             public FlowOrganization(Size2DF clientSize, Flow innerFlow, Alignment innerAlignment)
             {
@@ -56,11 +128,24 @@ namespace Cross.UI.Components
                 }
             }
 
-            protected abstract Vec1DF GetSpace(IVectorF vec, SpaceType type);
-            protected abstract SpatialUnit<Vec1DF> GetSpace<TVec, TUnit>(TUnit unit, SpaceType type) where TVec : IVectorF<TVec> where TUnit : SpatialUnit<TVec>;
-            protected abstract Point2DF Increment(Point2DF point, Vec1DF offset, SpaceType type);
+            public void AddRange(IEnumerable<ILayoutComponentOrganizer> organizers)
+            {
+                foreach (var organizer in organizers)
+                    Add(organizer);
+            }
 
-            public class FlowRow
+            public void Organize(ILayoutOrganizerContext ctx)
+            {
+                foreach (var row in _Rows)
+                    row.Organize(ctx);
+            }
+
+            protected abstract Vec1DF GetSpace(IVectorF vec, SpaceType type);
+            protected abstract SpatialUnit<Vec1DF> GetSpace<TVec, TUnit>(TUnit unit, SpaceType flow) where TVec : IVectorF<TVec> where TUnit : SpatialUnit<TVec>;
+            protected abstract Point2DF Increment(Point2DF point, Vec1DF offset, SpaceType type);
+            protected abstract Size2DF FlowCrossToWH(Vec1DF flowSpace, Vec1DF crossSpace);
+
+            private class FlowRow
             {
                 public FlowOrganization Organization { get; }
                 public IEnumerable<ILayoutComponentOrganizer> Elements => _Elements;
@@ -95,12 +180,12 @@ namespace Cross.UI.Components
                     _Elements.Add(organizer);
                 }
 
-                public void Organize(ILayoutOrganizerContext ctx, Alignment innerAlign)
+                public void Organize(ILayoutOrganizerContext ctx)
                 {
-                    
                     var rowCrossSpace = GetSpace(ctx.ClientSize, SpaceType.Cross) / Organization._Rows.Count;
-                    var current = Increment(new Point2DF(), rowCrossSpace * _Index, SpaceType.Cross);
-
+                    var current = AlignRow(Increment(new Point2DF(), rowCrossSpace * _Index, SpaceType.Cross));
+                    foreach (var element in EnumerateDirectional())
+                        current = OrganizeElement(ctx, element, current, rowCrossSpace);
                 }
 
                 private Point2DF AlignRow(Point2DF rowStart)
@@ -117,12 +202,27 @@ namespace Cross.UI.Components
                     };
                 }
 
-                private void OrganizeElement(ILayoutComponentOrganizer element, float rowCrossSpace)
+                private Point2DF OrganizeElement(ILayoutOrganizerContext ctx, ILayoutComponentOrganizer element, Point2DF cellStart, Vec1DF rowCrossSpace)
                 {
+                    var totalSpace = FlowCrossToWH(FlowSpatialContext.TotalSpace, rowCrossSpace);
+                    var remainingSpace = FlowCrossToWH(FlowSpatialContext.RemainingSpace, rowCrossSpace);
                     var innerFlow = Organization.InnerFlow;
+                    var absoluteSize = element.SpatialSize.ToAbsolute(totalSpace, remainingSpace);
+                    var crossAlign = ctx.GetAttributeOrDefault(Attributes.CrossAlign, Alignment.Begin);
 
-                    var absoluteSize = element.SpatialSize.ToAbsolute(new Size2DF())
+                    var marginedCrossSpace = GetSpace(absoluteSize.MarginedSize, SpaceType.Cross);
+                    var alignedMarginedStart = crossAlign switch
+                    {
+                        Alignment.Begin => cellStart,
+                        Alignment.Center => Increment(cellStart, rowCrossSpace / 2f - marginedCrossSpace / 2f, SpaceType.Cross),
+                        Alignment.End => Increment(cellStart, rowCrossSpace - marginedCrossSpace, SpaceType.Cross),
+                        _ => throw new NotImplementedException()
+                    };
+                    element.SetPosition(alignedMarginedStart + absoluteSize.Margin.TopLeft, absoluteSize);
+                    var marginedFlowSpace = GetSpace(absoluteSize.MarginedSize, SpaceType.Flow);
+                    return Increment(cellStart, marginedFlowSpace, SpaceType.Flow);
                 }
+
 
                 private IEnumerable<ILayoutComponentOrganizer> EnumerateDirectional()
                 {
@@ -145,7 +245,9 @@ namespace Cross.UI.Components
                     => Organization.GetSpace<TVec, TUnit>(unit, flow);
                 private Point2DF Increment(Point2DF point, Vec1DF offset, SpaceType type)
                     => Organization.Increment(point, offset, type);
-                
+                private Size2DF FlowCrossToWH(Vec1DF flowSpace, Vec1DF crossSpace) 
+                    => Organization.FlowCrossToWH(flowSpace, crossSpace);
+                    
             }
         }
     }

@@ -285,6 +285,10 @@ namespace Cross.UI.Graphics
         public float Top => _VecArray[1];
         public float Right => _VecArray[2];
         public float Bottom => _VecArray[3];
+        public Point2DF TopLeft => new Point2DF(Left, Top);
+        public Point2DF TopRight => new Point2DF(Right, Top);
+        public Point2DF BottomLeft => new Point2DF(Left, Bottom);
+        public Point2DF BottomRight => new Point2DF(Right, Bottom);
         public Size2DF MinOccupied => new Size2DF(Left + Right, Top + Bottom);
 
         public Padding2DF() : base(4)
